@@ -1,0 +1,470 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Our Anniversary Journey</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(-45deg, #2a0005, #5a0016, #8b1027, #c75a6c);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            font-family: 'Playfair Display', serif;
+            color: white;
+            height: 100vh;
+            width: 100vw;
+            touch-action: none;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .romantic-font { font-family: 'Dancing Script', cursive; }
+
+        /* Floating Hearts Background */
+        .bg-heart {
+            position: absolute;
+            color: rgba(255, 180, 200, 0.3);
+            font-size: 2rem;
+            animation: floatUp linear infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(110vh) scale(0.8) rotate(0deg); opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 0.8; }
+            100% { transform: translateY(-10vh) scale(1.5) rotate(45deg); opacity: 0; }
+        }
+
+        /* Glassmorphism */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            z-index: 10;
+            position: relative;
+        }
+
+        .glass-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+        }
+        .glass-input:focus {
+            outline: none;
+            border-color: #fb7185;
+            box-shadow: 0 0 15px rgba(251, 113, 133, 0.5);
+        }
+
+        /* Stages Setup */
+        .stage {
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 90%;
+            max-width: 500px;
+            height: auto;
+            max-height: 90vh;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 2rem;
+            border-radius: 1.5rem;
+        }
+        
+        #stage1 { display: flex; } /* Stage 1 visible initially */
+
+        /* Canvas Game */
+        #gameCanvas {
+            background: rgba(0,0,0,0.2);
+            border-radius: 1rem;
+            width: 100%;
+            height: 350px;
+            display: block;
+            margin-top: 1rem;
+        }
+
+        /* Puzzle */
+        .puzzle-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2px;
+            width: 100%;
+            max-width: 300px;
+            aspect-ratio: 1;
+            margin: 1rem auto;
+            background: rgba(255,255,255,0.2);
+            padding: 4px;
+            border-radius: 0.5rem;
+        }
+        .puzzle-piece {
+            width: 100%;
+            height: 100%;
+            background-size: 300% 300%;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .puzzle-piece.selected {
+            border: 2px solid #fb7185;
+            transform: scale(0.9);
+            z-index: 5;
+        }
+
+        .poem-text {
+            line-height: 1.8;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+        @media (max-width: 600px) {
+            .poem-text { font-size: 0.95rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Ambient Floating Hearts -->
+    <div id="bg-hearts-container"></div>
+
+    <!-- Audio Elements -->
+    <audio id="song1" src="blue_by_young_kai.mp3" loop></audio>
+
+    <!-- STAGE 1: Quiz -->
+    <div id="stage1" class="stage glass-card text-center">
+        <h1 class="romantic-font text-5xl text-rose-200 mb-6 drop-shadow-md">For You, Laali</h1>
+        <p class="text-xl mb-8">How many months does we complete?</p>
+        
+        <input type="text" id="answer-input" placeholder="Type answer here..." 
+               class="glass-input w-full text-center px-4 py-3 rounded-xl text-xl mb-4">
+        
+        <button type="button" onclick="checkStage1()" 
+                class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg text-lg">
+            Submit ❤️
+        </button>
+        
+        <div id="error-msg" class="mt-4 text-pink-300 min-h-[1.5rem] font-semibold"></div>
+    </div>
+
+    <!-- STAGE 2: Catching Game -->
+    <div id="stage2" class="stage glass-card text-center">
+        <h2 class="romantic-font text-4xl text-rose-200 mb-2">Catch My Heart</h2>
+        <p class="text-sm">Catch 10 💖. Avoid 💣! Score: <span id="scoreDisplay" class="font-bold text-rose-300">0</span>/10</p>
+        
+        <div class="relative w-full">
+            <canvas id="gameCanvas"></canvas>
+            
+            <!-- Win Message Overlay -->
+            <div id="stage2-win" class="absolute inset-0 bg-black/80 rounded-2xl flex-col items-center justify-center text-center p-6 hidden z-20">
+                <h3 class="romantic-font text-3xl text-pink-200 mb-6 leading-tight">
+                    Well done laala chi laali now are u ready for next level?
+                </h3>
+                <button type="button" onclick="forceStageTransition(2, 3)" 
+                        class="bg-rose-500 hover:bg-rose-400 text-white font-bold py-3 px-6 rounded-xl shadow-lg w-full">
+                    Go to Next Level 🧩
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- STAGE 3: Photo Puzzle -->
+    <div id="stage3" class="stage glass-card text-center">
+        <h2 class="romantic-font text-4xl text-rose-200 mb-2">Picture Perfect</h2>
+        <p class="text-sm mb-4">Tap two pieces to swap them.</p>
+
+        <div class="flex justify-center gap-2 mb-2">
+            <button type="button" onclick="loadPuzzle('1000213347.png')" class="bg-white/20 px-3 py-1 rounded text-sm hover:bg-white/30">Photo 1</button>
+            <button type="button" onclick="loadPuzzle('1000213348.png')" class="bg-white/20 px-3 py-1 rounded text-sm hover:bg-white/30">Photo 2</button>
+            <button type="button" onclick="loadPuzzle('1000213346.png')" class="bg-white/20 px-3 py-1 rounded text-sm hover:bg-white/30">Photo 3</button>
+        </div>
+
+        <div id="puzzle-grid" class="puzzle-grid"></div>
+        
+        <div id="puzzle-success" class="mt-4 flex-col items-center hidden w-full">
+            <div class="text-xl font-bold text-rose-200 romantic-font mb-2">Beautifully done! ❤️</div>
+        </div>
+
+        <!-- Always visible fallback button so user never gets stuck -->
+        <button type="button" onclick="forceStageTransition(3, 4)" class="mt-4 bg-rose-500 hover:bg-rose-400 text-white font-bold py-3 px-6 rounded-xl shadow-[0_0_15px_rgba(244,63,94,0.5)] w-full transition-transform hover:scale-105">
+            Submit / Continue to Next Page 📜
+        </button>
+    </div>
+
+    <!-- STAGE 4: Poem -->
+    <div id="stage4" class="stage glass-card flex-col items-center w-11/12 max-w-2xl max-h-[85vh] overflow-y-auto">
+        <div class="poem-text text-rose-100 font-serif px-1 md:px-4 py-4">
+            <p>माझ्या आयुष्यातील सर्वात सुंदर स्वप्न आहेस तू,<br>माझ्या प्रत्येक श्वासात वसलेला प्राण आहेस तू.</p>
+            <p class="mt-3">शब्दांतही सांगता येणार नाही एवढं,<br>माझं तुझ्यावर जीवापाड प्रेम आहे.</p>
+            <p class="mt-3">कधी ऊन, कधी सावली, हा आयुष्याचा खेळ आहे,<br>संकटांची कितीही मोठी वादळे आली, तरी आपला घट्ट मेळ आहे.</p>
+            <p class="mt-3">वाटेत कितीही अडचणी आल्या, तरी मी तुझा हात सोडणार नाही,<br>कठीण प्रसंगातही आपली साथ कधीच मोडणार नाही.</p>
+            <p class="mt-3">तुझ्या एका हास्यासाठी मी माझं सर्वस्व पणाला लावेन,<br>सुखात आणि दुःखात मी कायम तुझी सावली बनून राहीन.</p>
+            <p class="mt-3">काळ कितीही बदलला, आणि कितीही संकटे आली,<br>तरी आपण नेहमी एकत्रच राहू, हे वचन आहे माझं.</p>
+            <p class="mt-3">माझ्या आयुष्याची सुरुवात तुझ्यापासून झाली नसली तरी,<br>माझा शेवटचा श्वास मात्र तुझ्याच कुशीत असावा...</p>
+            <p class="mt-3">कारण तुझ्याविना या जगण्याला आणि माझ्या असण्याला काहीच अर्थ नाही!</p>
+            <p class="mt-3 text-pink-200 font-semibold">आणि मला पूर्ण खात्री आहे...<br>जसे 'पायल' आणि 'स्नेहा' सर्व अडचणी दूर करून एकत्र आले,<br>अगदी तसेच, 'उन्नती' आणि 'मनीष' सुद्धा कायमचे एकत्र येतील!</p>
+            <p class="mt-5 font-bold text-rose-300 text-lg">आपली ही साथ कधीच सुटणार नाही, हे माझं तुला वचन आहे.</p>
+        </div>
+        <button type="button" onclick="forceStageTransition(4, 5)" class="mt-6 mb-2 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-400 hover:to-pink-400 text-white font-bold py-4 px-8 rounded-full shadow-[0_0_20px_rgba(244,63,94,0.6)] transition-all hover:scale-105 w-full">
+            One last gift for you... 🎁
+        </button>
+    </div>
+
+    <!-- STAGE 5: Final Reveal -->
+    <div id="stage5" class="stage glass-card flex-col items-center justify-center w-11/12 max-w-3xl max-h-[90vh]">
+        <h1 class="romantic-font text-4xl md:text-5xl text-rose-200 mb-6 drop-shadow-md text-center leading-tight">
+            I Love You Forever, laali! ❤️
+        </h1>
+        
+        <div class="w-full rounded-2xl overflow-hidden shadow-[0_0_20px_rgba(244,63,94,0.4)] border border-white/20 bg-black/40">
+            <video src="video21.mp4" controls class="w-full h-auto max-h-[50vh] object-contain"></video>
+        </div>
+        
+        <div class="mt-6 text-rose-200 text-lg md:text-xl font-serif text-center opacity-90">
+            Happy Anniversary My Love
+        </div>
+    </div>
+
+    <script>
+        // --- Core Navigation Logic ---
+        function forceStageTransition(fromStage, toStage) {
+            document.getElementById('stage' + fromStage).style.display = 'none';
+            document.getElementById('stage' + toStage).style.display = 'flex';
+            
+            if(toStage === 3) {
+                loadPuzzle('1000213347.png');
+            }
+            if(toStage === 5) {
+                spawnExtraSparkles();
+            }
+        }
+
+        // --- Background Generation ---
+        const heartsContainer = document.getElementById('bg-hearts-container');
+        const heartSymbols = ['❤️', '💖', '✨', '💕'];
+        for(let i=0; i<20; i++) {
+            let heart = document.createElement('div');
+            heart.className = 'bg-heart';
+            heart.innerText = heartSymbols[Math.floor(Math.random() * heartSymbols.length)];
+            heart.style.left = Math.random() * 100 + 'vw';
+            heart.style.animationDuration = (Math.random() * 5 + 5) + 's';
+            heart.style.animationDelay = (Math.random() * 5) + 's';
+            heartsContainer.appendChild(heart);
+        }
+
+        // --- STAGE 1 LOGIC ---
+        function checkStage1() {
+            const input = document.getElementById('answer-input').value.trim();
+            const errorMsg = document.getElementById('error-msg');
+            
+            if(input === '10') {
+                errorMsg.innerText = '';
+                forceStageTransition(1, 2);
+                
+                const song1 = document.getElementById('song1');
+                song1.play().catch(e => console.log('Autoplay prevented.'));
+                
+                initGame();
+            } else {
+                errorMsg.innerText = "Try again, my love! ❤️";
+                document.getElementById('answer-input').value = '';
+            }
+        }
+
+        // --- STAGE 2 LOGIC ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let gameLoopId;
+        let score = 0;
+        let items = [];
+        let isGameActive = false;
+        const player = { x: 150, size: 40, emoji: '🧺' };
+
+        function resizeCanvas() {
+            if(!canvas.parentElement) return;
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = 350;
+            player.x = canvas.width / 2;
+        }
+
+        function initGame() {
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            score = 0;
+            items = [];
+            document.getElementById('scoreDisplay').innerText = score;
+            document.getElementById('stage2-win').style.display = 'none';
+            isGameActive = true;
+            spawnItem();
+            gameLoop();
+        }
+
+        function spawnItem() {
+            if(!isGameActive) return;
+            const isBomb = Math.random() < 0.3;
+            items.push({
+                x: Math.random() * (canvas.width - 40) + 20,
+                y: -20,
+                size: 30,
+                isBomb: isBomb,
+                emoji: isBomb ? '💣' : '💖',
+                speed: Math.random() * 2 + 2
+            });
+            setTimeout(spawnItem, Math.random() * 1000 + 500);
+        }
+
+        function gameLoop() {
+            if(!isGameActive) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Update & Draw Items
+            for (let i = items.length - 1; i >= 0; i--) {
+                let item = items[i];
+                item.y += item.speed;
+
+                ctx.font = `${item.size}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(item.emoji, item.x, item.y);
+
+                // Collision Detection
+                const playerY = canvas.height - 30;
+                let dx = item.x - player.x;
+                let dy = item.y - playerY;
+                let distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < (player.size/2 + item.size/2)) {
+                    if (item.isBomb) {
+                        score = 0;
+                        ctx.fillStyle = "rgba(255,0,0,0.3)";
+                        ctx.fillRect(0,0,canvas.width,canvas.height);
+                    } else {
+                        score++;
+                    }
+                    document.getElementById('scoreDisplay').innerText = score;
+                    items.splice(i, 1);
+                    
+                    if(score >= 10) {
+                        handleStage2Win();
+                        return;
+                    }
+                } else if (item.y > canvas.height + 30) {
+                    items.splice(i, 1);
+                }
+            }
+
+            // Draw Player
+            ctx.font = `${player.size}px Arial`;
+            ctx.fillText(player.emoji, player.x, canvas.height - 30);
+
+            gameLoopId = requestAnimationFrame(gameLoop);
+        }
+
+        function handleStage2Win() {
+            isGameActive = false;
+            cancelAnimationFrame(gameLoopId);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('stage2-win').style.display = 'flex';
+        }
+
+        function movePlayer(clientX) {
+            if(!isGameActive) return;
+            const rect = canvas.getBoundingClientRect();
+            let xPos = clientX - rect.left;
+            if (xPos < 20) xPos = 20;
+            if (xPos > canvas.width - 20) xPos = canvas.width - 20;
+            player.x = xPos;
+        }
+        canvas.addEventListener('mousemove', (e) => movePlayer(e.clientX));
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            movePlayer(e.touches[0].clientX);
+        }, { passive: false });
+
+        // --- STAGE 3 LOGIC ---
+        const grid = document.getElementById('puzzle-grid');
+        let puzzleOrder = [];
+        let selectedIndex = null;
+        
+        const positions = [
+            '0% 0%', '50% 0%', '100% 0%',
+            '0% 50%', '50% 50%', '100% 50%',
+            '0% 100%', '50% 100%', '100% 100%'
+        ];
+
+        function loadPuzzle(imageSrc) {
+            grid.innerHTML = '';
+            document.getElementById('puzzle-success').style.display = 'none';
+            selectedIndex = null;
+            
+            puzzleOrder = [0,1,2,3,4,5,6,7,8].sort(() => Math.random() - 0.5);
+            
+            puzzleOrder.forEach((originalPieceIndex, currentIndex) => {
+                const piece = document.createElement('div');
+                piece.className = 'puzzle-piece';
+                piece.style.backgroundImage = `url('${imageSrc}')`;
+                piece.style.backgroundPosition = positions[originalPieceIndex];
+                
+                piece.addEventListener('click', () => handlePieceClick(currentIndex));
+                grid.appendChild(piece);
+            });
+        }
+
+        function handlePieceClick(index) {
+            const pieces = grid.children;
+            
+            if (selectedIndex === null) {
+                selectedIndex = index;
+                pieces[index].classList.add('selected');
+            } else {
+                pieces[selectedIndex].classList.remove('selected');
+                
+                if (selectedIndex !== index) {
+                    let temp = puzzleOrder[selectedIndex];
+                    puzzleOrder[selectedIndex] = puzzleOrder[index];
+                    puzzleOrder[index] = temp;
+                    
+                    pieces[selectedIndex].style.backgroundPosition = positions[puzzleOrder[selectedIndex]];
+                    pieces[index].style.backgroundPosition = positions[puzzleOrder[index]];
+                    
+                    checkPuzzleWin();
+                }
+                selectedIndex = null;
+            }
+        }
+
+        function checkPuzzleWin() {
+            const isWin = puzzleOrder.every((val, index) => val === index);
+            if(isWin) {
+                document.getElementById('puzzle-success').style.display = 'flex';
+            }
+        }
+
+        function spawnExtraSparkles() {
+            for(let i=0; i<30; i++) {
+                let sparkle = document.createElement('div');
+                sparkle.className = 'bg-heart';
+                sparkle.innerText = '✨';
+                sparkle.style.left = Math.random() * 100 + 'vw';
+                sparkle.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                sparkle.style.animationDelay = (Math.random() * 2) + 's';
+                sparkle.style.fontSize = '1.5rem';
+                sparkle.style.color = '#fff';
+                heartsContainer.appendChild(sparkle);
+            }
+        }
+    </script>
+</body>
+</html>
+```
